@@ -1,37 +1,143 @@
-#!/usr/bin/env node
-
-/**
- * Module dependencies.
- */
+'use strict';
 
 const app = require('../app');
 const debug = require('debug')('chat:server');
 const http = require('http');
+const passport = require('passport');
+const OnlineChatters = require('../models/onlineChatter');
 
-/**
- * Get port from environment and store in Express.
- */
-
-var port = normalizePort(process.env.PORT || '3000');
+const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
-/**
- * Create HTTP server.
- */
-
-var server = http.createServer(app);
-
-/**
- * Listen on provided port, on all network interfaces.
- */
+const server = http.createServer(app);
 
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);
 
-/**
- * Normalize a port into a number, string, or false.
- */
+const io = require('socket.io')(server);
+
+var clients = {};
+
+io.on('connection', function (client) {
+    client.auth = false;
+    client.on('authenticate', function (data) {
+
+      if (data.token) {
+        //jwt.decode(data.token, secret);
+        console.log(data.token);
+      }
+    })
+    client.on('join', function(nickname){
+        clients[nickname] = client;
+        client.nickname = nickname;
+        client.broadcast.emit("messages", client.nickname + " has joined!");
+        //saveChatLog(undefined, newMessage);  // undefined because message is system generated
+        client.broadcast.emit("add chatter", client.nickname);
+        console.log('Broadcasted to all clients, except the new one.');
+
+        // get all the users
+        OnlineChatters.find({}, function(err, result) {
+            if (err) throw err;
+            // object of all the users
+            console.log('all chatters:', result);
+
+            result.forEach(function(obj){
+                client.emit("add chatter", obj.nickname);
+                console.log('emitted ' + obj.nickname);
+            });
+        });
+
+        // save new chatter to MongoDB
+        var newChatter = new OnlineChatters({ nickname: nickname });
+
+        newChatter.save(function(err) {
+            if (err) throw err;
+            console.log('newChatter saved successfully!');
+        });
+
+
+        // load earlier messages
+        /*ChatLog.find({}).sort({'timestamp': -1}).limit(5).exec(function(err, messages){
+            if (err) throw err;
+
+            // notify that it is loading
+            if(messages.length === 1){
+                client.emit("messages", "<span class='italic'>Loading recent 1 message/log.</span>"); // eliminate the s in message(s)
+            } else if(messages.length !== 0){
+                client.emit("messages", "<span class='italic'>Loading recent " + messages.length + " messages/logs.</span>");
+            }
+
+            messages.reverse(); // so that it is in chronological order
+
+            messages.forEach(function(message){
+                if(typeof message.nickname !== 'undefined'){ // if not system generated
+                    client.emit("messages", "<strong>" + message.nickname + ":</strong> " + message.message);
+                } else {
+                    client.emit("messages", message.message);
+                }
+            });
+
+            client.emit("messages", "<hr/>");  // end of recent messages
+
+            var newMessage = "<span class='italic'><strong>" + client.nickname + "</strong> has joined!</span>";
+            client.broadcast.emit("messages", newMessage);  // let the user know
+            client.emit("messages", newMessage);  // let this user know too
+            saveChatLog(undefined, newMessage);  // undefined because message is system generated
+
+
+        });*/
+
+    });
+
+    /*client.on('messages', function (messages) {
+        client.broadcast.emit("messages", "<strong>" + client.nickname + ":</strong> " + messages);
+        // save the new ChatLog
+        saveChatLog(client.nickname, messages);
+    });*/
+
+    client.on('chat_friend', function(friendNickname) {
+      console.log('chat_friend');
+      var friendClient = clients[friendNickname];
+      console.log(friendNickname);
+      if (!friendClient) {
+        console.log('Não achou');
+        return client.emit('notification', friendNickname + ' is offline');
+      }
+
+      var roomName = client.nickname + '_' + friendNickname;
+      if (friendNickname < client.nickname) {
+        roomName = friendNickname + '_' + client.nickname;
+      }
+      client.join(roomName);
+      friendClient.join(roomName);
+
+      client.emit('new_room', roomName);
+
+    });
+
+    client.on('disconnect', function(nickname){
+
+        console.log('in disconnect: ', nickname);
+
+        if(client.nickname !== null && typeof client.nickname !== 'undefined'){
+            client.broadcast.emit("remove chatter", client.nickname);
+
+            var newMessage = "<span class='italic'><strong>" + client.nickname + "</strong> has left.</span>";
+
+            client.broadcast.emit("messages", newMessage); // let the user know
+
+            //saveChatLog(undefined, newMessage);  // undefined because message strcture is different, it is system generated, no need to save nickname
+
+            // remove from database
+            OnlineChatters.findOneAndRemove({ nickname: client.nickname }, function(err) {
+                if (err) throw err;
+                console.log(client.nickname + ' deleted!');
+            });
+        }
+    });
+});
+
 
 function normalizePort(val) {
   var port = parseInt(val, 10);
@@ -49,9 +155,6 @@ function normalizePort(val) {
   return false;
 }
 
-/**
- * Event listener for HTTP server "error" event.
- */
 
 function onError(error) {
   if (error.syscall !== 'listen') {
@@ -62,7 +165,6 @@ function onError(error) {
     ? 'Pipe ' + port
     : 'Port ' + port;
 
-  // handle specific listen errors with friendly messages
   switch (error.code) {
     case 'EACCES':
       console.error(bind + ' requires elevated privileges');
@@ -76,10 +178,6 @@ function onError(error) {
       throw error;
   }
 }
-
-/**
- * Event listener for HTTP server "listening" event.
- */
 
 function onListening() {
   var addr = server.address();
