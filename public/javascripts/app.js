@@ -28,10 +28,6 @@ angular
           server.emit('join', main.nickname);
           main.nicknames = [ {nickname: main.nickname} ];
           main.gotNickname = true;
-
-          $timeout(function(){  // temporary fix for angular
-            document.getElementById('chatInput').focus();
-          }, 300);
         }
       } else {
         console.log('Please enter nickname.');
@@ -43,9 +39,9 @@ angular
   // on new chatter
   server.on('add chatter', function(nickname){
     console.log('Got add chatter request for ' + nickname);
-
-    main.nicknames.push({nickname: nickname});
-    $scope.$apply();
+    $scope.$apply(function () {
+      main.nicknames.push({nickname: nickname});
+    });
   });
 
   // on remove chatter
@@ -57,33 +53,22 @@ angular
 
       for(var i=0, l=main.nicknames.length; i<l; i++){
         if(main.nicknames[i].nickname === nickname){
-          main.nicknames.splice(i,1);
-          $scope.$apply();
+          $scope.$apply(function () {
+            main.nicknames.splice(i,1);
+          });
           break;
         }
       }
     }
   });
 
-  server.on('messages', function(message) {
-    if(/null/.test(message) === true || /undefined/.test(message) === true){ // temporary fix
-      return false;
-    }
+  main.submitHandler = function(room){
+    //$event.preventDefault();
 
-    angular.element(document.querySelector('#chatLog')).append("<p>" + message + "</p>");
-    var chatLogDiv = document.getElementById("chatLog");
-    chatLogDiv.scrollTop = chatLogDiv.scrollHeight - chatLogDiv.clientHeight;
-  });
+    //var chatLogDiv = document.getElementById("chatLog");
+    //chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
 
-  main.submitHandler = function($event){
-    $event.preventDefault();
-
-    angular.element(document.querySelector('#chatLog')).append("<p class='italic'><strong>Me: </strong>" + main.chatInput + "</p>");
-
-    var chatLogDiv = document.getElementById("chatLog");
-    chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
-
-    server.emit("messages", main.chatInput);
+    server.emit('room_message', {roomName: room.name, message: room.chatInput } );
 
     main.chatInput = "";
   };
@@ -92,16 +77,37 @@ angular
     server.emit('chat_friend', friend.nickname);
   }
 
-  server.on('new_room', function (roomName) {
-    if (main.rooms.indexOf(roomName) < 0) {
-      $scope.$apply(function () {
-        main.rooms.push({name: roomName, visible: false});
+  server.on('message', function (message) {
+    var room = findRoom(main.rooms, message.roomName);
+    if (room) {
+      $scope.$apply(function() {
+        room.messages.push(message);
       });
     }
+  })
+
+  server.on('new_room', function (roomName) {
+    var roomExists = findRoom(main.rooms, roomName);
+    if (!roomExists) {
+      $scope.$apply(function () {
+        main.rooms.push({name: roomName, visible: false, messages: []});
+      });
+    }
+
   });
+
 
   $window.addEventListener("beforeunload", function (event) {
     return $window.confirm("Do you really want to close?");
   });
 
 }]);
+
+function findRoom(rooms, roomName) {
+  for (var i = 0, length = rooms.length; i < length; i++) {
+    var room = rooms[i];
+    if (room.name === roomName) {
+      return room;
+    }
+  }
+}

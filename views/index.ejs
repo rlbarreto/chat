@@ -27,29 +27,34 @@
             <div class="row">
                 <div class="col-md-2" id="chattersContainer" ng-show="main.gotNickname">
                     <ul id="chatters">
-                        <li ng-repeat="nickname in ::main.nicknames" ng-click="main.newChatRoom(nickname)">{{nickname.nickname}}</li>
+                        <li ng-repeat="nickname in main.nicknames" ng-click="main.newChatRoom(nickname)">{{nickname.nickname}}</li>
                     </ul>
                 </div>
 
                 <div class="col-md-10" ng-show="main.gotNickname">
                     <ul id="chatters">
-                        <li ng-repeat="room in ::main.rooms" ng-click="main.visibleRoom.visible = false; main.visibleRoom = room; room.visible = true;">{{room}}</li>
+                        <li ng-repeat="room in main.rooms" ng-click="main.visibleRoom.visible = false; main.visibleRoom = room; room.visible = true;">{{room.name}}</li>
                     </ul>
-                    <div ng-show="room.visible">
-                        <div ng-repeat="room in ::main.rooms">
-                            <form id="chatForm" ng-submit="main.submitHandler($event)">
+                    <div ng-repeat="room in main.rooms">
+                        <div ng-show="room.visible">
+                            <div ng-repeat="message in room.messages">
+                                 <label>{{::message.from}}</label> {{::message.text}}
+                            </div>
+                            <ng-form ng-submit="main.submitHandler(room)">
                                 <input type="text"
                                     id="chatInput"
                                     class="form-control"
-                                    ng-model="chatInput"
+                                    ng-model="room.chatInput"
                                     placeholder="Enter your message"
                                     autocomplete="off"
                                     required
                                     autofocus
                                 >
+                                <input type="button" value="Send" ng-click="main.submitHandler(room)">
                             </form>
                         </div>
                     </div>
+
 
                 </div>
             </div>

@@ -31,7 +31,7 @@ io.on('connection', function (client) {
     client.on('join', function(nickname){
         clients[nickname] = client;
         client.nickname = nickname;
-        client.broadcast.emit("messages", client.nickname + " has joined!");
+        client.broadcast.emit('notification', client.nickname + " has joined!");
         //saveChatLog(undefined, newMessage);  // undefined because message is system generated
         client.broadcast.emit("add chatter", client.nickname);
         console.log('Broadcasted to all clients, except the new one.');
@@ -113,7 +113,15 @@ io.on('connection', function (client) {
       friendClient.join(roomName);
 
       client.emit('new_room', roomName);
+      client.broadcast.to(roomName).emit('new_room', roomName);
 
+
+    });
+
+    client.on('room_message', function (roomMessage) {
+      console.log('broadcast', {roomName: roomMessage.roomName, text: roomMessage.message});
+      client.broadcast.to(roomMessage.roomName).emit('message', {roomName: roomMessage.roomName, from: client.nickname, text: roomMessage.message});
+      client.emit('message', {roomName: roomMessage.roomName, from: 'me', text: roomMessage.message});
     });
 
     client.on('disconnect', function(nickname){
