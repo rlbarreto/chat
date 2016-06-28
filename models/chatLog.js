@@ -4,8 +4,8 @@ const Schema = mongoose.Schema;
 var ChatLog = new Schema({
   timestamp: {
     type: String,
-        required: true,
-        unique: true
+    required: true,
+    unique: true
   },
   roomName: String,
   sender: {type: mongoose.Schema.Types.ObjectId, ref: 'Account'},
