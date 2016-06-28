@@ -5,6 +5,7 @@ const debug = require('debug')('chat:server');
 const http = require('http');
 const passport = require('passport');
 const OnlineChatters = require('../models/onlineChatter');
+const ChatLog = require('../models/chatLog');
 const webToken = require('../token');
 
 const port = normalizePort(process.env.PORT || '3000');
@@ -26,10 +27,17 @@ io.on('connection', function (client) {
 
       if (data.token) {
         //jwt.decode(data.token, secret);
-        console.log(webToken.decode(data.token));
+        client.userId = webToken.decode(data.token).userId;
+        if (client.userId) {
+          client.auth = true;
+
+        }
       }
     })
     client.on('join', function(nickname){
+        if (!client.auth) {
+          return client.emit('error', 'Need authentication');
+        }
         clients[nickname] = client;
         client.nickname = nickname;
         client.broadcast.emit('notification', client.nickname + " has joined!");
@@ -117,13 +125,36 @@ io.on('connection', function (client) {
       client.emit('new_room', roomName);
       client.broadcast.to(roomName).emit('new_room', roomName);
 
+      ChatLog.find({}).populate('sender').sort({'timestamp': -1}).limit(5).exec()
+        .then(function(chatLogs) {
+          console.log('carregou', chatLogs);
+          for(var i = 0, length = chatLogs.length; i < length; i++) {
+            var chatLog = chatLogs[i];
+            io.sockets.in(roomName).emit('message', {roomName: chatLog.roomName, from: chatLog.sender.username, text: chatLog.message});
+          }
+
+        })
+
 
     });
 
     client.on('room_message', function (roomMessage) {
       console.log('broadcast', {roomName: roomMessage.roomName, text: roomMessage.message});
-      client.broadcast.to(roomMessage.roomName).emit('message', {roomName: roomMessage.roomName, from: client.nickname, text: roomMessage.message});
-      client.emit('message', {roomName: roomMessage.roomName, from: 'me', text: roomMessage.message});
+
+      var chatLog = new ChatLog({
+        timestamp: Date.now(),
+        roomName: roomMessage.roomName,
+        message: roomMessage.message,
+        sender: client.userId
+      });
+
+      chatLog.save(function(err) {
+        if (err) throw err;
+        client.broadcast.to(roomMessage.roomName).emit('message', {roomName: roomMessage.roomName, from: client.nickname, text: roomMessage.message});
+        client.emit('message', {roomName: roomMessage.roomName, from: 'me', text: roomMessage.message});
+      });
+
+
     });
 
     client.on('disconnect', function(nickname){
@@ -132,10 +163,6 @@ io.on('connection', function (client) {
 
         if(client.nickname !== null && typeof client.nickname !== 'undefined'){
             client.broadcast.emit("remove chatter", client.nickname);
-
-            var newMessage = "<span class='italic'><strong>" + client.nickname + "</strong> has left.</span>";
-
-            client.broadcast.emit("messages", newMessage); // let the user know
 
             //saveChatLog(undefined, newMessage);  // undefined because message strcture is different, it is system generated, no need to save nickname
 
