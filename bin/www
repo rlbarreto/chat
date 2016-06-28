@@ -5,6 +5,7 @@ const debug = require('debug')('chat:server');
 const http = require('http');
 const passport = require('passport');
 const OnlineChatters = require('../models/onlineChatter');
+const webToken = require('../token');
 
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
@@ -25,7 +26,7 @@ io.on('connection', function (client) {
 
       if (data.token) {
         //jwt.decode(data.token, secret);
-        console.log(data.token);
+        console.log(webToken.decode(data.token));
       }
     })
     client.on('join', function(nickname){
@@ -33,7 +34,8 @@ io.on('connection', function (client) {
         client.nickname = nickname;
         client.broadcast.emit('notification', client.nickname + " has joined!");
         //saveChatLog(undefined, newMessage);  // undefined because message is system generated
-        client.broadcast.emit("add chatter", client.nickname);
+        //client.broadcast.emit("add chatter", client.nickname);
+        io.sockets.emit("add chatter", client.nickname);
         console.log('Broadcasted to all clients, except the new one.');
 
         // get all the users
