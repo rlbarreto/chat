@@ -8,7 +8,7 @@ var ChatLog = new Schema({
         unique: true
   },
   roomName: String,
-  chatUsers: [{ type : mongoose.Types.ObjectId, ref: 'Account' }],
+  sender: {type: mongoose.Schema.Types.ObjectId, ref: 'Account'},
   message: String
 });
 
