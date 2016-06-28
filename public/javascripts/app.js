@@ -66,11 +66,7 @@ angular
 
   main.submitHandler = function(room){
     server.emit('room_message', {roomName: room.name, message: room.chatInput } );
-
-    $scope.$apply(function () {
-      main.chatInput = '';
-    });
-
+    room.chatInput = '';
   };
 
   main.newChatRoom = function (nickname) {
@@ -81,7 +77,7 @@ angular
     var room = findRoom(main.rooms, message.roomName);
     if (room) {
       $scope.$apply(function() {
-        room.messages.push(message);
+        room.messages.unshift(message);
       });
     }
   });
