@@ -69,7 +69,7 @@ module.exports = function(server) {
       client.emit('new_room', roomName);
       client.broadcast.to(roomName).emit('new_room', roomName);
 
-      ChatLog.find({}).populate('sender').sort({'timestamp': -1}).limit(5).exec()
+      ChatLog.find({}).populate('sender').sort({'timestamp': -1}).limit(10).exec()
       .then(function(chatLogs) {
         console.log('carregou', chatLogs);
         for(var i = chatLogs.length-1; i >= 0; i--) {
