@@ -21,26 +21,28 @@ angular
   });
 
   main.nicknameSubmitHandler = function (username, password) {
-      if(username){
-          console.log('Got nickname: ' + username);
-          $http.post('http://localhost:3000/api/login', {username, password})
-            .then(function (response) {
-              server.emit('authenticate', {token: response.data.token});
-                server.emit('join', username);
-                main.gotNickname = true;
-            }, function (response) {
-              console.log(data);
-            });
-      } else {
-        console.log('Please enter nickname.');
-      }
-    };
+    if(username){
+      console.log('Got nickname: ' + username);
+      $http.post('http://localhost:3000/api/login', {username, password})
+      .then(function (response) {
+        server.emit('authenticate', {token: response.data.token});
+        server.emit('join', username);
+        main.gotNickname = true;
+      }, function (response) {
+        console.log(data);
+      });
+    } else {
+      console.log('Please enter nickname.');
+    }
+  };
 
   // on new chatter
   server.on('add chatter', function(nickname){
     console.log('Got add chatter request for ' + nickname);
     $scope.$apply(function () {
-      main.nicknames.push({nickname: nickname});
+      if (main.nicknames.indexOf(nickname) < 0) {
+        main.nicknames.push(nickname);
+      }
     });
   });
 
@@ -52,7 +54,7 @@ angular
       console.log('main.nicknames', main.nicknames);
 
       for(var i=0, l=main.nicknames.length; i<l; i++){
-        if(main.nicknames[i].nickname === nickname){
+        if(main.nicknames[i] === nickname){
           $scope.$apply(function () {
             main.nicknames.splice(i,1);
           });
@@ -63,18 +65,16 @@ angular
   });
 
   main.submitHandler = function(room){
-    //$event.preventDefault();
-
-    //var chatLogDiv = document.getElementById("chatLog");
-    //chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
-
     server.emit('room_message', {roomName: room.name, message: room.chatInput } );
 
-    main.chatInput = "";
+    $scope.$apply(function () {
+      main.chatInput = '';
+    });
+
   };
 
-  main.newChatRoom = function (friend) {
-    server.emit('chat_friend', friend.nickname);
+  main.newChatRoom = function (nickname) {
+    server.emit('chat_friend', nickname);
   }
 
   server.on('message', function (message) {
@@ -84,7 +84,7 @@ angular
         room.messages.push(message);
       });
     }
-  })
+  });
 
   server.on('new_room', function (roomName) {
     var roomExists = findRoom(main.rooms, roomName);
@@ -93,12 +93,13 @@ angular
         main.rooms.push({name: roomName, visible: false, messages: []});
       });
     }
-
   });
 
 
   $window.addEventListener("beforeunload", function (event) {
-    return $window.confirm("Do you really want to close?");
+    if (main.nickname) {
+      server.emit('disconnect', main.nickname);
+    }
   });
 
 }]);
