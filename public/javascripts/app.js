@@ -8,33 +8,33 @@ angular
   // hide chatroom until the nickname is entered
   main.gotNickname = false;
   main.nickname = '';
+  main.nicknames = [];
 
   main.rooms = [];
 
   // on connect
   server.on('connect', function(data){
+    $scope.$apply(function () {
+      main.ready = true;
+    });
 
-    $timeout(function(){  // temporary fix for angular
-      document.getElementById('nickname').focus();
-    }, 300);
+  });
 
-    main.nicknameSubmitHandler = function () {
-      if(main.nickname){
-        if(main.nickname.trim() === ''){
-          main.nickname = '';
-          console.log('Please enter nickname.');
-        } else {
-          console.log('Got nickname: ' + main.nickname);
-          server.emit('join', main.nickname);
-          main.nicknames = [ {nickname: main.nickname} ];
-          main.gotNickname = true;
-        }
+  main.nicknameSubmitHandler = function (username, password) {
+      if(username){
+          console.log('Got nickname: ' + username);
+          $http.post('http://localhost:3000/api/login', {username, password})
+            .then(function (response) {
+              server.emit('authenticate', {token: response.data.token});
+                server.emit('join', username);
+                main.gotNickname = true;
+            }, function (response) {
+              console.log(data);
+            });
       } else {
         console.log('Please enter nickname.');
       }
     };
-
-  });
 
   // on new chatter
   server.on('add chatter', function(nickname){

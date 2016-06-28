@@ -6,20 +6,28 @@
 
     <body ng-app="chatroom">
 
-        <div class="container" ng-controller="mainController as main">
+        <div class="container" ng-controller="mainController as main" ng-show="main.ready">
 
             <div class="row">
                 <div class="col-md-12" ng-hide="main.gotNickname">
-                    <form ng-submit="main.nicknameSubmitHandler($event)">
+                    <form ng-submit="main.nicknameSubmitHandler(main.nickname.trim(), main.password)">
                         <input type="text"
                             class="form-control center-text"
                             ng-model="main.nickname"
-                            id="nickname"
                             placeholder="Enter your nickname"
                             autocomplete="off"
                             required
                             autofocus
                         >
+                        <input type="password"
+                            class="form-control center-text"
+                            ng-model="main.password"
+                            placeholder="Enter your nickname"
+                            autocomplete="off"
+                            required
+                            autofocus
+                        >
+                        <input type="submit" value="send">
                     </form>
                 </div>
             </div>
