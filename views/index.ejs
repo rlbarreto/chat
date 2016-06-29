@@ -5,8 +5,9 @@
   </head>
   <body ng-app="chat">
     <div class="container" ng-controller="MainController as mainCtrl">
-      <div ng-hide="mainCtrl.data.authenticated">
+      <div ng-hide="mainCtrl.data.authenticated || mainCtrl.data.register">
         <div class="col-md-12">
+          <label>Log in</label>
           <form ng-controller="LoginController as loginCtrl" ng-submit="loginCtrl.login(loginCtrl.username.trim(), loginCtrl.password)">
             <input type="text"
             class="form-control center-text"
@@ -25,11 +26,46 @@
             autofocus
             >
             <input type="submit" value="send">
+            <a href="" ng-click="loginCtrl.data.register = true" style="float:right;">New user?</a>
+          </form>
+        </div>
+      </div>
+      <div ng-hide="mainCtrl.data.authenticated || !mainCtrl.data.register">
+        <div class="col-md-12">
+          <label>Sign up</label>
+          <form ng-controller="RegisterController as registerCtrl" ng-submit="registerCtrl.register(registerCtrl.username.trim(), registerCtrl.password, registerCtrl.rePassword)">
+            <input type="text"
+            class="form-control center-text"
+            ng-model="registerCtrl.username"
+            placeholder="Enter your username"
+            autocomplete="off"
+            required
+            autofocus
+            >
+            <input type="password"
+            class="form-control center-text"
+            ng-model="registerCtrl.password"
+            placeholder="Enter your password"
+            autocomplete="off"
+            required
+            autofocus
+            >
+            <input type="password"
+            class="form-control center-text"
+            ng-model="registerCtrl.rePassword"
+            placeholder="Retype your password"
+            autocomplete="off"
+            required
+            autofocus
+            >
+            <input type="submit" value="Send">           
+            <input type="button" value="Cancel" ng-click="registerCtrl.data.register = false">
           </form>
         </div>
       </div>
       <div ng-show="mainCtrl.data.authenticated">
         <div class="col-md-4" ng-controller="ChatController as chatCtrl">
+          <div class="top-list">Available</div>
           <ul>
             <li ng-repeat="friend in chatCtrl.data.friends"
               ng-click="chatCtrl.newChatRoom(friend, chatCtrl.data.selectedFriend)"

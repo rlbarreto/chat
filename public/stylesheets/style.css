@@ -1,22 +1,30 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+	padding: 50px;
+	font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
 .friend {
-  cursor: pointer;
+	cursor: pointer;
 }
 
 .friend.selected {
-  cursor: default !important;
-  background-color: #6BD2AC;
+	cursor: default !important;
+	background-color: #6BD2AC;
 }
 
 .newMessage::after {
-    content: "*";
-    font-weight: bold;
+	content: "*";
+	font-weight: bold;
+}
+
+top-list {
+	border: "1px dotted black";
+}
+
+ul {
+	list-style-type: none;
 }
 
 a {
-  color: #00B7FF;
+	color: #00B7FF;
 }

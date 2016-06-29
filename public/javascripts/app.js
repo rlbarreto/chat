@@ -3,6 +3,7 @@
   .module('chat', [])
   .controller('MainController', ['dataSource', MainController])
   .controller('LoginController', ['$scope', '$http', 'dataSource', 'websocket', LoginController])
+  .controller('RegisterController',['$scope', '$http', 'dataSource', 'websocket', RegisterController])
   .controller('ChatController', ['dataSource', ChatController])
   .service('dataSource', [dataSourceService])
   .service('websocket', ['dataSource', webSocketService]);
@@ -22,13 +23,33 @@
     function login(username, password) {
       if(username){
         $http.post('http://localhost:3000/api/login', {username, password})
-        .then(function (response) {
+        .then(function loginSuccess(response) {
           websocket.connect($scope, username, response.data.token);
-        }, function (response) {
+        }, function loginFail(response) {
           alert('Error trying to authenticate user');
         });
       } else {
         alert('Username must be informed');
+      }
+    }
+  }
+
+  function RegisterController($scope, $http, dataSource, websocket) {
+    var registerCtrl = this;
+    registerCtrl.data = dataSource;
+    registerCtrl.register = register;
+
+    function register(username, password, repassword) {
+      if (username) {
+        if (password !== repassword) return alert('Password not equal');
+        $http.post('http://localhost:3000/api/register', {username, password})
+        .then(function registerSuccess(response) {
+          registerCtrl.data.register = false;
+          websocket.connect($scope, username, response.data.token);
+        }, function registerFail(response) {
+          alert(reponse.data);
+        })
+
       }
     }
   }
@@ -44,7 +65,9 @@
       friend.selected = true;
       friend.newMessage = false
       dataSource.selectedFriend = friend;
-      server.emit('chat_friend', friend.name);
+      if (!friend.room) {
+        server.emit('chat_friend', friend.name);
+      }
     }
 
     function sendMessage(friend) {
@@ -57,6 +80,7 @@
   function dataSourceService() {
     return {
       authenticated: false,
+      register: false,
       username: '',
       friends: [],
       rooms: [],
