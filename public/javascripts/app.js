@@ -1,110 +1,171 @@
-angular
-.module('chatroom', [])
-.controller('mainController', ['$scope', '$http', '$window', '$timeout', function($scope, $http, $window, $timeout){
-  var main = this;
-  // first, establish the socket connection
-  var server = io('http://localhost:3000'); // change this if you are hosting on a remote server
+(function () {
+  angular
+  .module('chat', [])
+  .controller('MainController', ['dataSource', MainController])
+  .controller('LoginController', ['$scope', '$http', 'dataSource', 'websocket', LoginController])
+  .controller('ChatController', ['dataSource', ChatController])
+  .service('dataSource', [dataSourceService])
+  .service('websocket', ['dataSource', webSocketService]);
 
-  // hide chatroom until the nickname is entered
-  main.gotNickname = false;
-  main.nickname = '';
-  main.nicknames = [];
+  function MainController(dataSource) {
+    this.data = dataSource;
+  }
 
-  main.rooms = [];
+  function LoginController($scope, $http, dataSource, websocket) {
+    var loginCtrl = this;
+    loginCtrl.data = dataSource;
+    loginCtrl.username = '';
+    loginCtrl.password = '';
 
-  // on connect
-  server.on('connect', function(data){
-    $scope.$apply(function () {
-      main.ready = true;
-    });
+    loginCtrl.login = login;
 
-  });
-
-  main.nicknameSubmitHandler = function (username, password) {
-    if(username){
-      console.log('Got nickname: ' + username);
-      $http.post('http://localhost:3000/api/login', {username, password})
-      .then(function (response) {
-        server.emit('authenticate', {token: response.data.token});
-        server.emit('join', username);
-        main.gotNickname = true;
-      }, function (response) {
-        console.log(data);
-      });
-    } else {
-      console.log('Please enter nickname.');
-    }
-  };
-
-  // on new chatter
-  server.on('add chatter', function(nickname){
-    console.log('Got add chatter request for ' + nickname);
-    $scope.$apply(function () {
-      if (main.nicknames.indexOf(nickname) < 0) {
-        main.nicknames.push(nickname);
+    function login(username, password) {
+      if(username){
+        $http.post('http://localhost:3000/api/login', {username, password})
+        .then(function (response) {
+          websocket.connect($scope, username, response.data.token);
+        }, function (response) {
+          alert('Error trying to authenticate user');
+        });
+      } else {
+        alert('Username must be informed');
       }
-    });
-  });
+    }
+  }
 
-  // on remove chatter
-  server.on('remove chatter', function(nickname){
-    if(nickname !== null && typeof nickname !== 'undefined'){
-      console.log('Someone left: ' + nickname);
+  function ChatController(dataSource) {
+    this.data = dataSource;
+    this.data.selectedFriend = undefined;
+    this.newChatRoom = newChatRoom;
+    this.sendMessage = sendMessage;
 
-      console.log('main.nicknames', main.nicknames);
+    function newChatRoom(friend, previeusSelected) {
+      if (previeusSelected) previeusSelected.selected = false;
+      friend.selected = true;
+      friend.newMessage = false
+      dataSource.selectedFriend = friend;
+      server.emit('chat_friend', friend.name);
+    }
 
-      for(var i=0, l=main.nicknames.length; i<l; i++){
-        if(main.nicknames[i] === nickname){
-          $scope.$apply(function () {
-            main.nicknames.splice(i,1);
-          });
-          break;
+    function sendMessage(friend) {
+      var room = friend.room;
+      server.emit('room_message', {roomName: room.name, message: room.chatInput } );
+      room.chatInput = '';
+    }
+  }
+
+  function dataSourceService() {
+    return {
+      authenticated: false,
+      username: '',
+      friends: [],
+      rooms: [],
+      webSocket: undefined,
+      setAuthentcated: function(username) {
+        this.authenticated = true;
+        this.username = username;
+      },
+      addFriend: function(friendName) {
+        if (this.friends.indexOf(friendName) < 0) {
+          this.friends.push(friendName);
         }
       }
     }
-  });
-
-  main.submitHandler = function(room){
-    server.emit('room_message', {roomName: room.name, message: room.chatInput } );
-    room.chatInput = '';
-  };
-
-  main.newChatRoom = function (nickname) {
-    server.emit('chat_friend', nickname);
   }
 
-  server.on('message', function (message) {
-    var room = findRoom(main.rooms, message.roomName);
-    if (room) {
-      $scope.$apply(function() {
-        room.messages.unshift(message);
+  function webSocketService(dataSource) {
+    return {
+      connect: connect,
+      chatWithFriend: chatWithFriend
+    };
+
+    function connect($scope, username, token) {
+      server = io('http://localhost:3000');
+      server.on('connect', function(data) {
+        server.emit('authenticate', {token: token});
+        server.emit('join', username);
+        $scope.$apply(function() {
+          dataSource.setAuthentcated(username);
+        });
+        configAddChatter($scope);
+        configRemoveChatter($scope);
+        configNewChatRoom($scope);
+        configOnMessage($scope);
+      });
+      dataSource.webSocket = server;
+    }
+
+    function configAddChatter($scope) {
+      dataSource.webSocket.on('add chatter', function(nickname) {
+        $scope.$apply(function() {
+          dataSource.addFriend({name: nickname});
+        });
       });
     }
-  });
 
-  server.on('new_room', function (roomName) {
-    var roomExists = findRoom(main.rooms, roomName);
-    if (!roomExists) {
-      $scope.$apply(function () {
-        main.rooms.push({name: roomName, visible: false, messages: []});
+    function configRemoveChatter($scope) {
+      dataSource.webSocket.on('remove chatter', function(nickname){
+        if(nickname !== null && typeof nickname !== 'undefined'){
+          for(var i=0, l=dataSource.friends.length; i<l; i++){
+            if(dataSource.friends[i] === nickname){
+              $scope.$apply(function () {
+                dataSource.friends.splice(i,1);
+              });
+              break;
+            }
+          }
+        }
       });
     }
-  });
 
-
-  $window.addEventListener("beforeunload", function (event) {
-    if (main.nickname) {
-      server.emit('disconnect', main.nickname);
+    function configOnMessage($scope) {
+      dataSource.webSocket.on('message', function (message) {
+        var room = findRoom(dataSource.rooms, message.roomName);
+        if (room) {
+          $scope.$apply(function() {
+            if (!message.old) {
+              room.friend.newMessage = message.from !== 'me';
+            }
+            room.messages.unshift(message);
+          });
+        }
+      });
     }
-  });
 
-}]);
 
-function findRoom(rooms, roomName) {
-  for (var i = 0, length = rooms.length; i < length; i++) {
-    var room = rooms[i];
-    if (room.name === roomName) {
-      return room;
+    function chatWithFriend(friend) {
+      dataSource.webSocket.emit('chat_friend', friend.name);
+    }
+
+    function configNewChatRoom($scope) {
+      dataSource.webSocket.on('new_room', function (roomName, friendName) {
+        var friend = findFriend(dataSource.friends, friendName);
+        if (friend && !friend.room) {
+          $scope.$apply(function () {
+            friend.room = {name: roomName, messages: [], friend: friend};
+            dataSource.rooms.push(friend.room);
+          });
+        }
+      });
+    }
+
+  }
+
+  function findFriend(friends, friendName) {
+    for (var i = 0, length = friends.length; i < length; i++) {
+      var friend = friends[i];
+      if (friend.name === friendName) {
+        return friend;
+      }
     }
   }
-}
+
+  function findRoom(rooms, roomName) {
+    for (var i = 0, length = rooms.length; i < length; i++) {
+      var room = rooms[i];
+      if (room.name === roomName) {
+        return room;
+      }
+    }
+  }
+})();

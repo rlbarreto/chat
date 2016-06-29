@@ -29,16 +29,13 @@ module.exports = function(server) {
       clients[nickname] = client;
       client.nickname = nickname;
       client.broadcast.emit('notification', client.nickname + " has joined!");
-      io.sockets.emit("add chatter", client.nickname);
-      console.log('Broadcasted to all clients, except the new one.');
+      client.broadcast.emit("add chatter", client.nickname);
 
       OnlineChatters.find({}, function(err, result) {
         if (err) throw err;
-        console.log('all chatters:', result);
 
         result.forEach(function(obj){
           client.emit("add chatter", obj.nickname);
-          console.log('emitted ' + obj.nickname);
         });
       });
 
@@ -46,15 +43,12 @@ module.exports = function(server) {
 
       newChatter.save(function(err) {
         if (err) throw err;
-        console.log('newChatter saved successfully!');
       });
 
     });
 
     client.on('chat_friend', function(friendNickname) {
-      console.log('chat_friend', friendNickname);
       var friendClient = clients[friendNickname];
-      console.log(friendNickname);
       if (!friendClient) {
         return client.emit('notification', friendNickname + ' is offline');
       }
@@ -66,21 +60,20 @@ module.exports = function(server) {
       client.join(roomName);
       friendClient.join(roomName);
 
-      client.emit('new_room', roomName);
-      client.broadcast.to(roomName).emit('new_room', roomName);
+      client.emit('new_room', roomName, friendNickname);
+      client.broadcast.to(roomName).emit('new_room', roomName, client.nickname);
 
       ChatLog.find({}).populate('sender').sort({'timestamp': -1}).limit(10).exec()
       .then(function(chatLogs) {
-        console.log('carregou', chatLogs);
         for(var i = chatLogs.length-1; i >= 0; i--) {
           var chatLog = chatLogs[i];
-          io.sockets.in(roomName).emit('message', {roomName: chatLog.roomName, from: chatLog.sender.username, text: chatLog.message});
+          var sender = chatLog.sender.username === client.nickname ? 'me' : chatLog.sender.username;
+          io.sockets.in(roomName).emit('message', {roomName: chatLog.roomName, from: sender, text: chatLog.message, old:true});
         }
       });
     });
 
     client.on('room_message', function (roomMessage) {
-      console.log('broadcast', {roomName: roomMessage.roomName, text: roomMessage.message});
       var chatLog = new ChatLog({
         timestamp: Date.now(),
         roomName: roomMessage.roomName,
@@ -98,20 +91,12 @@ module.exports = function(server) {
     });
 
     client.on('disconnect', function(nickname){
-
-      console.log('in disconnect: ', nickname);
-
       if(client.nickname !== null && typeof client.nickname !== 'undefined'){
         client.broadcast.emit("remove chatter", client.nickname);
-
-            //saveChatLog(undefined, newMessage);  // undefined because message strcture is different, it is system generated, no need to save nickname
-
-            // remove from database
-            OnlineChatters.findOneAndRemove({ nickname: client.nickname }, function(err) {
-              if (err) throw err;
-              console.log(client.nickname + ' deleted!');
-            });
-          }
+        OnlineChatters.findOneAndRemove({ nickname: client.nickname }, function(err) {
+          if (err) throw err;
         });
+      }
+    });
   });
 }

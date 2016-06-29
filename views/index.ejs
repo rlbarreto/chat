@@ -1,65 +1,73 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <% include partials/header.ejs %>
-    </head>
-    <body ng-app="chatroom">
-        <div class="container" ng-controller="mainController as main" ng-show="main.ready">
-            <div class="row">
-                <div class="col-md-12" ng-hide="main.gotNickname">
-                    <form ng-submit="main.nicknameSubmitHandler(main.nickname.trim(), main.password)">
-                        <input type="text"
-                        class="form-control center-text"
-                        ng-model="main.nickname"
-                        placeholder="Enter your username"
-                        autocomplete="off"
-                        required
-                        autofocus
-                        >
-                        <input type="password"
-                        class="form-control center-text"
-                        ng-model="main.password"
-                        placeholder="Enter your password"
-                        autocomplete="off"
-                        required
-                        autofocus
-                        >
-                        <input type="submit" value="send">
-                    </form>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-2" id="chattersContainer" ng-show="main.gotNickname">
-                    <ul id="chatters">
-                        <li ng-repeat="nickname in main.nicknames" ng-click="main.newChatRoom(nickname)">{{nickname}}</li>
-                    </ul>
-                </div>
-                <div class="col-md-10" ng-show="main.gotNickname">
-                    <ul id="chatters">
-                        <li ng-repeat="room in main.rooms" ng-click="main.visibleRoom.visible = false; main.visibleRoom = room; room.visible = true;">{{room.name}}</li>
-                    </ul>
-                    <div ng-repeat="room in main.rooms">
-                        <div ng-show="room.visible">
-                            <ng-form ng-submit="main.submitHandler(room)">
-                                <input type="text"
-                                class="form-control"
-                                ng-model="room.chatInput"
-                                placeholder="Enter your message"
-                                autocomplete="off"
-                                required
-                                autofocus
-                                >
-                                <input type="button" value="Send" ng-click="main.submitHandler(room)">
-                            </ng-form>
-                            <div ng-repeat="message in room.messages">
-                                <label>{{::message.from}}</label> {{::message.text}}
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <head>
+    <% include partials/header.ejs %>
+  </head>
+  <body ng-app="chat">
+    <div class="container" ng-controller="MainController as mainCtrl">
+      <div ng-hide="mainCtrl.data.authenticated">
+        <div class="col-md-12">
+          <form ng-controller="LoginController as loginCtrl" ng-submit="loginCtrl.login(loginCtrl.username.trim(), loginCtrl.password)">
+            <input type="text"
+            class="form-control center-text"
+            ng-model="loginCtrl.username"
+            placeholder="Enter your username"
+            autocomplete="off"
+            required
+            autofocus
+            >
+            <input type="password"
+            class="form-control center-text"
+            ng-model="loginCtrl.password"
+            placeholder="Enter your password"
+            autocomplete="off"
+            required
+            autofocus
+            >
+            <input type="submit" value="send">
+          </form>
         </div>
-        <% include partials/scripts.ejs %>
-    </body>
+      </div>
+      <div ng-show="mainCtrl.data.authenticated">
+        <div class="col-md-4" ng-controller="ChatController as chatCtrl">
+          <ul>
+            <li ng-repeat="friend in chatCtrl.data.friends"
+              ng-click="chatCtrl.newChatRoom(friend, chatCtrl.data.selectedFriend)"
+              class="friend"
+              ng-class="{selected: friend.selected, newMessage: friend.newMessage && !friend.selected}">
+              {{::friend.name}}
+            </li>
+          </ul>
+          <div ng-show="chatCtrl.data.selectedFriend && chatCtrl.data.selectedFriend.room">
+            <div
+              ng-class="{newMessage: chatCtrl.data.selectedFriend.newMessage}"
+              ng-click="chatCtrl.data.selectedFriend.newMessage = false">
+              Chatting with <label>{{::chatCtrl.data.selectedFriend.name}}</label>
+            </div>
+            <div style="height:40px">
+              <div style="width:80%; float:left">
+                <input type="text"
+                class="form-control"
+                ng-model="chatCtrl.data.selectedFriend.room.chatInput"
+                placeholder="Enter your message"
+                autocomplete="off"
+                required
+                autofocus
+                >
+              </div>
+              <div style="width:20%; float:left">
+                <input type="button" value="Send" ng-click="chatCtrl.sendMessage(chatCtrl.data.selectedFriend)">
+              </div>
+            </div>
+            <div>
+              <div ng-repeat="message in chatCtrl.data.selectedFriend.room.messages">
+                <label>{{::message.from}}:</label> {{::message.text}}</li>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% include partials/scripts.ejs %>
+  </body>
 </html>
