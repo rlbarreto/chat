@@ -58,14 +58,14 @@
             required
             autofocus
             >
-            <input type="submit" value="Send">           
+            <input type="submit" value="Send">
             <input type="button" value="Cancel" ng-click="registerCtrl.data.register = false">
           </form>
         </div>
       </div>
       <div ng-show="mainCtrl.data.authenticated">
         <div class="col-md-4" ng-controller="ChatController as chatCtrl">
-          <div class="top-list">Available</div>
+          <div class="top-list">Available <a href="" style="float:right" ng-click="chatCtrl.logoff()">logoff</a></div>
           <ul>
             <li ng-repeat="friend in chatCtrl.data.friends"
               ng-click="chatCtrl.newChatRoom(friend, chatCtrl.data.selectedFriend)"

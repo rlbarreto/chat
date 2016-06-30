@@ -24,7 +24,8 @@ module.exports = function(server) {
     })
     client.on('join', function(nickname){
       if (!client.auth) {
-        return client.emit('error', 'Need authentication');
+        client.emit('error', 'Need authentication');
+        return  client.disconnect();
       }
       clients[nickname] = client;
       client.nickname = nickname;
@@ -90,9 +91,9 @@ module.exports = function(server) {
 
     });
 
-    client.on('disconnect', function(nickname){
+    client.on('disconnect', function(){
       if(client.nickname !== null && typeof client.nickname !== 'undefined'){
-        client.broadcast.emit("remove chatter", client.nickname);
+        io.sockets.emit("remove chatter", client.nickname);
         OnlineChatters.findOneAndRemove({ nickname: client.nickname }, function(err) {
           if (err) throw err;
         });

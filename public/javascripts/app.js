@@ -4,7 +4,7 @@
   .controller('MainController', ['dataSource', MainController])
   .controller('LoginController', ['$scope', '$http', 'dataSource', 'websocket', LoginController])
   .controller('RegisterController',['$scope', '$http', 'dataSource', 'websocket', RegisterController])
-  .controller('ChatController', ['dataSource', ChatController])
+  .controller('ChatController', ['dataSource', 'websocket', ChatController])
   .service('dataSource', [dataSourceService])
   .service('websocket', ['dataSource', webSocketService]);
 
@@ -54,11 +54,17 @@
     }
   }
 
-  function ChatController(dataSource) {
+  function ChatController(dataSource, websocket) {
     this.data = dataSource;
     this.data.selectedFriend = undefined;
     this.newChatRoom = newChatRoom;
     this.sendMessage = sendMessage;
+    this.logoff = logoff;
+
+    function logoff() {
+      websocket.disconnect();
+      dataSource.authenticated = false;
+    }
 
     function newChatRoom(friend, previeusSelected) {
       if (previeusSelected) previeusSelected.selected = false;
@@ -100,8 +106,14 @@
   function webSocketService(dataSource) {
     return {
       connect: connect,
+      disconnect: disconnect,
       chatWithFriend: chatWithFriend
     };
+
+    function disconnect() {
+      dataSource.webSocket.emit('disconnect', dataSource.username);
+      dataSource.webSocket.disconnect();
+    }
 
     function connect($scope, username, token) {
       server = io('http://localhost:3000');
@@ -130,13 +142,12 @@
     function configRemoveChatter($scope) {
       dataSource.webSocket.on('remove chatter', function(nickname){
         if(nickname !== null && typeof nickname !== 'undefined'){
-          for(var i=0, l=dataSource.friends.length; i<l; i++){
-            if(dataSource.friends[i] === nickname){
-              $scope.$apply(function () {
-                dataSource.friends.splice(i,1);
-              });
-              break;
-            }
+          var friend = findFriend(dataSource.friends, nickname);
+          var index = dataSource.friends.indexOf(friend);
+          if (index >= 0) {
+            $scope.$apply(function () {
+              dataSource.friends.splice(index,1);
+            });
           }
         }
       });
