@@ -15,6 +15,7 @@
   function LoginController($scope, $http, dataSource, websocket) {
     var loginCtrl = this;
     loginCtrl.data = dataSource;
+    loginCtrl.data.freids = [];
     loginCtrl.username = '';
     loginCtrl.password = '';
 
@@ -62,8 +63,9 @@
     this.logoff = logoff;
 
     function logoff() {
-      websocket.disconnect();
-      dataSource.authenticated = false;
+      //websocket.disconnect();
+      //dataSource.authenticated = false;
+      dataSource.logoff();
     }
 
     function newChatRoom(friend, previeusSelected) {
@@ -99,6 +101,11 @@
         if (this.friends.indexOf(friendName) < 0) {
           this.friends.push(friendName);
         }
+      },
+      logoff: function() {
+        this.webSocket.disconnect();
+        this.authenticated = false;
+        this.friends = [];
       }
     }
   }

@@ -43,12 +43,18 @@ module.exports = function(server) {
         });
       });
 
-      var newChatter = new OnlineChatters({ nickname: nickname });
+      OnlineChatters.findOne({nickname: nickname}).then(function (onlineChatter) {
+        debug('finding out if user already online');
+        debug(onlineChatter);
+        if (!onlineChatter) {
+          debug('%s user registered as online', nickname);
+          var newChatter = new OnlineChatters({ nickname: nickname });
 
-      newChatter.save(function(err) {
-        if (err) throw err;
+          newChatter.save(function(err) {
+            if (err) throw err;
+          });
+        }
       });
-
     });
 
     client.on('chat_friend', function(friendNickname) {
@@ -95,6 +101,7 @@ module.exports = function(server) {
     });
 
     client.on('disconnect', function(){
+      debug('trying to disconnect');
       if(client.nickname !== null && typeof client.nickname !== 'undefined'){
         debug('Disconnect user %s', client.nickname);
         io.sockets.emit("remove chatter", client.nickname);
