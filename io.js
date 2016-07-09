@@ -1,5 +1,6 @@
 'use strict';
 
+const debug = require('debug')('socket:server');
 const webToken = require('./token');
 const OnlineChatters = require('./models/onlineChatter');
 const ChatLog = require('./models/chatLog');
@@ -18,12 +19,13 @@ module.exports = function(server) {
         client.userId = webToken.decode(data.token).userId;
         if (client.userId) {
           client.auth = true;
-
+          debug('%s authenticated', client.nickname);
         }
       }
     })
     client.on('join', function(nickname){
       if (!client.auth) {
+        debug('%s need authentication', nickname);
         client.emit('error', 'Need authentication');
         return  client.disconnect();
       }
@@ -36,6 +38,7 @@ module.exports = function(server) {
         if (err) throw err;
 
         result.forEach(function(obj){
+          debug('add %s as online chatter', obj.nickname);
           client.emit("add chatter", obj.nickname);
         });
       });
@@ -53,7 +56,7 @@ module.exports = function(server) {
       if (!friendClient) {
         return client.emit('notification', friendNickname + ' is offline');
       }
-
+      debug('%s chatting with %s', client.nickname, friendNickname)
       var roomName = client.nickname + '_' + friendNickname;
       if (friendNickname < client.nickname) {
         roomName = friendNickname + '_' + client.nickname;
@@ -93,11 +96,13 @@ module.exports = function(server) {
 
     client.on('disconnect', function(){
       if(client.nickname !== null && typeof client.nickname !== 'undefined'){
+        debug('Disconnect user %s', client.nickname);
         io.sockets.emit("remove chatter", client.nickname);
         OnlineChatters.findOneAndRemove({ nickname: client.nickname }, function(err) {
           if (err) throw err;
         });
       }
+
     });
   });
 }
