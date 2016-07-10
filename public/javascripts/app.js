@@ -24,6 +24,7 @@
       if(username){
         $http.post('http://localhost:3000/api/login', {username, password})
         .then(function loginSuccess(response) {
+          loginCtrl.data.me = username;
           websocket.connect($scope, username, response.data.token);
         }, function loginFail(response) {
           alert('Error trying to authenticate user');
@@ -100,9 +101,13 @@
       this.username = username;
     }
 
-    function addFriend(friendName) {
-      if (this.friends.indexOf(friendName) < 0) {
-        this.friends.push(friendName);
+    function addFriend(friend) {
+      function findFriendInList(element, index, array) {
+        return element.name === friend.name;
+      }
+
+      if (this.me !== friend.name && !this.friends.find(findFriendInList)) {
+        this.friends.push(friend);
       }
     }
 
@@ -126,7 +131,7 @@
     }
 
     function connect($scope, username, token) {
-      server = io('http://localhost:3000');
+      server = io();
       server.on('connect', function(data) {
         server.emit('authenticate', {token: token});
         server.emit('join', username);
