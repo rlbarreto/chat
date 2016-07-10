@@ -10,20 +10,19 @@ module.exports = function(server) {
 
   var clients = {};
 
-  io.on('connection', function (client) {
+  io.on('connection', function onConnection(client) {
     client.auth = false;
-    client.on('authenticate', function (data) {
-
+    client.on('authenticate', function onAuthenticate(data) {
       if (data.token) {
         //jwt.decode(data.token, secret);
         client.userId = webToken.decode(data.token).userId;
         if (client.userId) {
           client.auth = true;
-          debug('%s authenticated', client.nickname);
+          debug('%s authenticated', client.userId);
         }
       }
     })
-    client.on('join', function(nickname){
+    client.on('join', function onJoin(nickname){
       if (!client.auth) {
         debug('%s need authentication', nickname);
         client.emit('error', 'Need authentication');
@@ -34,16 +33,16 @@ module.exports = function(server) {
       client.broadcast.emit('notification', client.nickname + " has joined!");
       client.broadcast.emit("add chatter", client.nickname);
 
-      OnlineChatters.find({}, function(err, result) {
+      OnlineChatters.find({}, function onInitFind(err, result) {
         if (err) throw err;
 
-        result.forEach(function(obj){
+        result.forEach(function onlineChattersForEach(obj){
           debug('add %s as online chatter', obj.nickname);
           client.emit("add chatter", obj.nickname);
         });
       });
 
-      OnlineChatters.findOne({nickname: nickname}).then(function (onlineChatter) {
+      OnlineChatters.findOne({nickname: nickname}).then(function isOnline(onlineChatter) {
         debug('finding out if user already online');
         debug(onlineChatter);
         if (!onlineChatter) {
@@ -57,7 +56,7 @@ module.exports = function(server) {
       });
     });
 
-    client.on('chat_friend', function(friendNickname) {
+    client.on('chat_friend', function onNewChatRoom(friendNickname) {
       var friendClient = clients[friendNickname];
       if (!friendClient) {
         return client.emit('notification', friendNickname + ' is offline');
@@ -74,7 +73,7 @@ module.exports = function(server) {
       client.broadcast.to(roomName).emit('new_room', roomName, client.nickname);
 
       ChatLog.find({}).populate('sender').sort({'timestamp': -1}).limit(10).exec()
-      .then(function(chatLogs) {
+      .then(function onChatLog(chatLogs) {
         for(var i = chatLogs.length-1; i >= 0; i--) {
           var chatLog = chatLogs[i];
           var sender = chatLog.sender.username === client.nickname ? 'me' : chatLog.sender.username;
@@ -83,7 +82,7 @@ module.exports = function(server) {
       });
     });
 
-    client.on('room_message', function (roomMessage) {
+    client.on('room_message', function onRoomMessage(roomMessage) {
       var chatLog = new ChatLog({
         timestamp: Date.now(),
         roomName: roomMessage.roomName,
@@ -91,16 +90,15 @@ module.exports = function(server) {
         sender: client.userId
       });
 
-      chatLog.save(function(err) {
-        if (err) throw err;
+      chatLog.save().then(function onChatLogSuccessSave() {
         client.broadcast.to(roomMessage.roomName).emit('message', {roomName: roomMessage.roomName, from: client.nickname, text: roomMessage.message});
         client.emit('message', {roomName: roomMessage.roomName, from: 'me', text: roomMessage.message});
+      }).catch(function onSaveChatLog(err) {
+        throw err;
       });
 
-
     });
-
-    client.on('disconnect', function(){
+    client.on('disconnect', function onDisconnect(){
       debug('trying to disconnect');
       if(client.nickname !== null && typeof client.nickname !== 'undefined'){
         debug('Disconnect user %s', client.nickname);
