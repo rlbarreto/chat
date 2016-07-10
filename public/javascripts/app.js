@@ -1,11 +1,14 @@
 (function () {
   angular
-  .module('chat', [])
+  .module('chat', ['LocalStorageModule'])
+  .config(function (localStorageServiceProvider) {
+    localStorageServiceProvider.setPrefix('chat');
+  })
   .controller('MainController', ['dataSource', MainController])
   .controller('LoginController', ['$scope', '$http', 'dataSource', 'websocket', LoginController])
   .controller('RegisterController',['$scope', '$http', 'dataSource', 'websocket', RegisterController])
   .controller('ChatController', ['dataSource', 'websocket', ChatController])
-  .service('dataSource', [dataSourceService])
+  .service('dataSource', ['localStorageService', dataSourceService])
   .service('websocket', ['dataSource', webSocketService])
   .directive('notification', ['$timeout', notification]);
 
@@ -16,17 +19,26 @@
   function LoginController($scope, $http, dataSource, websocket) {
     var loginCtrl = this;
     loginCtrl.data = dataSource;
-    loginCtrl.data.freids = [];
+    loginCtrl.data.friends = [];
     loginCtrl.username = '';
     loginCtrl.password = '';
     loginCtrl.login = login;
+
+    loginCtrl.data.loadFromStorage();
+    if (loginCtrl.data.token) {
+      websocket.connect($scope, loginCtrl.data.username, loginCtrl.data.token);
+    }
 
     function login(username, password) {
       if(username){
         $http.post('http://localhost:3000/api/login', {username, password})
         .then(function loginSuccess(response) {
+
           loginCtrl.data.me = username;
+          loginCtrl.data.username = username;
+          loginCtrl.data.token = response.data.token;
           loginCtrl.data.clearNotification();
+          loginCtrl.data.saveToStorage();
           websocket.connect($scope, username, response.data.token);
         }, function loginFail(response) {
           loginCtrl.data.notifyError('Error trying to authenticate user');
@@ -85,7 +97,7 @@
     }
   }
 
-  function dataSourceService() {
+  function dataSourceService(localStorageService) {
     return {
       authenticated: false,
       register: false,
@@ -102,7 +114,30 @@
       addFriend: addFriend,
       logoff: logoff,
       notifyError: notifyError,
-      clearNotification: clearNotification
+      clearNotification: clearNotification,
+      saveToStorage: saveToStorage,
+      loadFromStorage: loadFromStorage
+    }
+
+    function loadFromStorage() {
+      var data = localStorageService.get('data') || {};
+      var now = new Date();
+      if (data.username) {
+        this.username = data.username;
+        this.authenticated = true;
+        this.register = false;
+        this.token = data.token;
+      }
+    }
+
+    function saveToStorage() {
+      localStorageService.set('data', {
+        username: this.username,
+        friends: this.friends,
+        rooms: this.rooms,
+        token: this.token,
+        when: new Date()
+      });
     }
 
     function clearNotification() {
@@ -165,6 +200,9 @@
         configRemoveChatter($scope);
         configNewChatRoom($scope);
         configOnMessage($scope);
+        window.onbeforeunload = function onBeforeUnload(e) {
+          server.disconnect();
+        };
       });
       dataSource.webSocket = server;
     }
