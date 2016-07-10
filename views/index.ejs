@@ -5,6 +5,7 @@
   </head>
   <body ng-app="chat">
     <div class="container" ng-controller="MainController as mainCtrl">
+      <notification alert-data="mainCtrl.data.notification"></notification>
       <div ng-hide="mainCtrl.data.authenticated || mainCtrl.data.register">
         <div class="col-md-12">
           <label>Log in</label>

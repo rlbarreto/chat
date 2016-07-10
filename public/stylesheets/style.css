@@ -28,3 +28,9 @@ ul {
 a {
 	color: #00B7FF;
 }
+
+.alert {
+	position: absolute;
+	right: 100px;
+	top: 0;
+}

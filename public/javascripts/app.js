@@ -6,7 +6,8 @@
   .controller('RegisterController',['$scope', '$http', 'dataSource', 'websocket', RegisterController])
   .controller('ChatController', ['dataSource', 'websocket', ChatController])
   .service('dataSource', [dataSourceService])
-  .service('websocket', ['dataSource', webSocketService]);
+  .service('websocket', ['dataSource', webSocketService])
+  .directive('notification', ['$timeout', notification]);
 
   function MainController(dataSource) {
     this.data = dataSource;
@@ -25,12 +26,13 @@
         $http.post('http://localhost:3000/api/login', {username, password})
         .then(function loginSuccess(response) {
           loginCtrl.data.me = username;
+          loginCtrl.data.clearNotification();
           websocket.connect($scope, username, response.data.token);
         }, function loginFail(response) {
-          alert('Error trying to authenticate user');
+          loginCtrl.data.notifyError('Error trying to authenticate user');
         });
       } else {
-        alert('Username must be informed');
+        loginCtrl.data.notifyError('Username must be informed');
       }
     }
   }
@@ -42,13 +44,13 @@
 
     function register(username, password, repassword) {
       if (username) {
-        if (password !== repassword) return alert('Password not equal');
+        if (password !== repassword) return registerCtrl.data.notifyError('Password not equal');
         $http.post('http://localhost:3000/api/register', {username, password})
         .then(function registerSuccess(response) {
           registerCtrl.data.register = false;
           websocket.connect($scope, username, response.data.token);
         }, function registerFail(response) {
-          alert(reponse.data);
+          registerCtrl.data.notifyError(reponse.data);
         })
 
       }
@@ -87,13 +89,34 @@
     return {
       authenticated: false,
       register: false,
+      notification: {
+        message: undefined,
+        type: undefined,
+        status: undefined
+      },
       username: '',
       friends: [],
       rooms: [],
       webSocket: undefined,
       setAuthentcated: setAuthentcated,
       addFriend: addFriend,
-      logoff: logoff
+      logoff: logoff,
+      notifyError: notifyError,
+      clearNotification: clearNotification
+    }
+
+    function clearNotification() {
+      this.notification = {
+        message: undefined,
+        type: undefined,
+        status: undefined
+      };
+    }
+
+    function notifyError(message) {
+      this.notification.message = message;
+      this.notification.type = 'danger';
+      this.notification.status = 'show';
     }
 
     function setAuthentcated(username) {
@@ -199,6 +222,38 @@
       });
     }
 
+  }
+
+  function notification($timeout) {
+    return {
+      restrict: 'E',
+      template:"<div class='alert alert-{{alertData.type}}' ng-show='alertData.message' role='alert' data-notification='{{alertData.status}}'>{{alertData.message}}</div>",
+      scope:{
+        alertData:"="
+      },
+      replace:true,
+      link: function notificationLink(scope, element, attrs) {
+        var timer;
+        scope.$watch('alertData.message', function (newValue) {
+          if(newValue) {
+            if (timer) {
+              $timeout.cancel(timer);
+            }
+            timer = $timeout(function onTimeout() {
+              scope.alertData.message='';
+            }, scope.alertData.timeout || 3000);
+          }
+        });
+
+        scope.$on(
+          "$destroy",
+          function( event ) {
+            $timeout.cancel( timer );
+          }
+          );
+
+      }
+    };
   }
 
   function findFriend(friends, friendName) {
