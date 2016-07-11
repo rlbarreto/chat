@@ -1,13 +1,12 @@
 'use strict';
 
-const debug = require('debug')('socket:server');
-const webToken = require('./token');
-const OnlineChatters = require('./models/onlineChatter');
-const ChatLog = require('./models/chatLog');
+const debug = require('debug')('socket:server'),
+      webToken = require('./token'),
+      OnlineChatters = require('./models/onlineChatter'),
+      ChatLog = require('./models/chatLog');
 
-module.exports = function(server) {
+var ioConfig = function(server) {
   const io = require('socket.io')(server);
-
   var clients = {};
 
   io.on('connection', function onConnection(client) {
@@ -79,6 +78,8 @@ module.exports = function(server) {
           var sender = chatLog.sender.username === client.nickname ? 'me' : chatLog.sender.username;
           io.sockets.in(roomName).emit('message', {roomName: chatLog.roomName, from: sender, text: chatLog.message, old:true});
         }
+      }).catch(function onChatLogFindError(err) {
+        client.emit('notification', 'There was an error loading chat log');
       });
     });
 
@@ -94,7 +95,7 @@ module.exports = function(server) {
         client.broadcast.to(roomMessage.roomName).emit('message', {roomName: roomMessage.roomName, from: client.nickname, text: roomMessage.message});
         client.emit('message', {roomName: roomMessage.roomName, from: 'me', text: roomMessage.message});
       }).catch(function onSaveChatLog(err) {
-        throw err;
+        client.emit('notification', 'There was an error sending your message');
       });
 
     });
@@ -110,4 +111,6 @@ module.exports = function(server) {
 
     });
   });
-}
+};
+
+module.exports = ioConfig;

@@ -1,15 +1,14 @@
 'use strict';
 
-const debug = require('debug')('chat:server');
 require('dotenv').config();
-const app = require('../app');
-const http = require('http');
-const passport = require('passport');
-const port = normalizePort(process.env.PORT || '3000');
+const debug = require('debug')('chat:server'),
+      app = require('../app'),
+      http = require('http'),
+      passport = require('passport'),
+      port = normalizePort(process.env.PORT || '3000'),
+      server = http.createServer(app);
+
 app.set('port', port);
-
-const server = http.createServer(app);
-
 server.listen(port);
 server.on('error', onError);
 server.on('listening', onListening);

@@ -1,11 +1,10 @@
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
-var passportLocalMongoose = require('passport-local-mongoose');
-
-var Account = new Schema({
-    email: String,
-    session: false
-});
+const mongoose = require('mongoose'),
+      Schema = mongoose.Schema,
+      passportLocalMongoose = require('passport-local-mongoose'),
+      Account = new Schema({
+        email: String,
+        session: false
+      });
 
 Account.plugin(passportLocalMongoose);
 

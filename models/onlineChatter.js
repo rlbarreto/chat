@@ -1,9 +1,8 @@
-const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
-
-const OnlineChatter = new Schema({
-  email: String,
-  nickname: String
-});
+const mongoose = require('mongoose'),
+      Schema = mongoose.Schema;
+      OnlineChatter = new Schema({
+        email: String,
+        nickname: String
+      });
 
 module.exports = mongoose.model('OnlineChatter', OnlineChatter);

@@ -1,10 +1,10 @@
-const debug = require('debug')('chat:userControl');
-const express = require('express');
-const passport = require('passport');
-const moment = require('moment');
-const Account = require('../models/account');
-const router = express.Router();
-const webToken = require('../token');
+const debug = require('debug')('chat:userControl'),
+      express = require('express'),
+      passport = require('passport'),
+      moment = require('moment'),
+      Account = require('../models/account'),
+      router = express.Router(),
+      webToken = require('../token');
 
 router.get('/', function(req, res, next) {
   res.render('index');
@@ -26,12 +26,12 @@ router.post('/api/register', function registerUser(req, res) {
 
 router.post('/api/login',
   passport.authenticate('local', {session: false}),
-  function authenticated(req, res) {
-    debug('returning token');
-    var token = webToken.encode({ userId: req.user._id, validUntil: moment().add(30, 'minutes').format()});
-    res.json({ token : token });
-  }
-);
+    function authenticated(req, res) {
+      debug('returning token');
+      var token = webToken.encode({ userId: req.user._id, validUntil: moment().add(30, 'minutes').format()});
+      res.json({ token : token });
+    }
+  );
 
 
 
