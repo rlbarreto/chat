@@ -72,7 +72,7 @@
   function ChatController(dataSource, websocket) {
     var chatCtrl = this;
     chatCtrl.data = dataSource;
-    chatCtrl.data.selectedFriend = undefined;
+    chatCtrl.data.selectedFriend = {};
     chatCtrl.newChatRoom = newChatRoom;
     chatCtrl.sendMessage = sendMessage;
     chatCtrl.logoff = logoff;
@@ -112,14 +112,14 @@
       authenticated: false,
       register: false,
       notification: {
-        message: undefined,
-        type: undefined,
-        status: undefined
+        message: '',
+        type: '',
+        status: ''
       },
       username: '',
       friends: [],
       rooms: [],
-      webSocket: undefined,
+      webSocket: {},
       setAuthentcated: setAuthentcated,
       addFriend: addFriend,
       logoff: logoff,
@@ -153,9 +153,9 @@
 
     function clearNotification() {
       this.notification = {
-        message: undefined,
-        type: undefined,
-        status: undefined
+        message: '',
+        type: '',
+        status: ''
       };
     }
 
