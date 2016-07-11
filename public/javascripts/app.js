@@ -9,7 +9,7 @@
   .controller('RegisterController',['$scope', '$http', 'dataSource', 'websocket', RegisterController])
   .controller('ChatController', ['dataSource', 'websocket', ChatController])
   .service('dataSource', ['localStorageService', dataSourceService])
-  .service('websocket', ['dataSource', webSocketService])
+  .service('websocket', ['$window', 'dataSource', webSocketService])
   .directive('notification', ['$timeout', notification]);
 
   function MainController(dataSource) {
@@ -114,6 +114,7 @@
       addFriend: addFriend,
       logoff: logoff,
       notifyError: notifyError,
+      notifyInfo: notifyInfo,
       clearNotification: clearNotification,
       saveToStorage: saveToStorage,
       loadFromStorage: loadFromStorage
@@ -154,6 +155,12 @@
       this.notification.status = 'show';
     }
 
+    function notifyInfo(message) {
+      this.notification.message = message;
+      this.notification.type = 'info';
+      this.notification.status = 'show';
+    }
+
     function setAuthentcated(username) {
       this.authenticated = true;
       this.username = username;
@@ -176,7 +183,7 @@
     }
   }
 
-  function webSocketService(dataSource) {
+  function webSocketService($window, dataSource) {
     return {
       connect: connect,
       disconnect: disconnect,
@@ -200,7 +207,7 @@
         configRemoveChatter($scope);
         configNewChatRoom($scope);
         configOnMessage($scope);
-        window.onbeforeunload = function onBeforeUnload(e) {
+        $window.onbeforeunload = function onBeforeUnload(e) {
           server.disconnect();
         };
       });
@@ -234,8 +241,9 @@
         var room = findRoom(dataSource.rooms, message.roomName);
         if (room) {
           $scope.$apply(function() {
-            if (!message.old) {
-              room.friend.newMessage = message.from !== 'me';
+            if (!message.old && message.from !== 'me') {
+              room.friend.newMessage = true;
+              dataSource.notifyInfo('New message from ' + message.from);
             }
             room.messages.unshift(message);
           });
