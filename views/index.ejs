@@ -90,10 +90,11 @@
                 autocomplete="off"
                 required
                 autofocus
+                ng-keyup="chatCtrl.messageKeyUp(chatCtrl.data.selectedFriend, $event)"
                 >
               </div>
               <div style="width:20%; float:left">
-                <input type="button" value="Send" ng-click="chatCtrl.sendMessage(chatCtrl.data.selectedFriend)">
+                <input type="button" value="Send" ng-click="chatCtrl.sendMessage(chatCtrl.data.selectedFriend)" ng-disabled="!chatCtrl.data.selectedFriend.room.chatInput || chatCtrl.data.selectedFriend.room.chatInput.length === 0">
               </div>
             </div>
             <div>

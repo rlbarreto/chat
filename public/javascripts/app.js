@@ -70,14 +70,22 @@
   }
 
   function ChatController(dataSource, websocket) {
-    this.data = dataSource;
-    this.data.selectedFriend = undefined;
-    this.newChatRoom = newChatRoom;
-    this.sendMessage = sendMessage;
-    this.logoff = logoff;
+    var chatCtrl = this;
+    chatCtrl.data = dataSource;
+    chatCtrl.data.selectedFriend = undefined;
+    chatCtrl.newChatRoom = newChatRoom;
+    chatCtrl.sendMessage = sendMessage;
+    chatCtrl.logoff = logoff;
+    chatCtrl.messageKeyUp = messageKeyUp;
 
     function logoff() {
       dataSource.logoff();
+    }
+
+    function messageKeyUp(friend, event) {
+      if (event.keyCode === 13) {
+        chatCtrl.sendMessage(friend);
+      }
     }
 
     function newChatRoom(friend, previeusSelected) {
@@ -92,8 +100,10 @@
 
     function sendMessage(friend) {
       var room = friend.room;
-      server.emit('room_message', {roomName: room.name, message: room.chatInput } );
-      room.chatInput = '';
+      if (room.chatInput && room.chatInput.trim()) {
+        server.emit('room_message', {roomName: room.name, message: room.chatInput } );
+        room.chatInput = '';
+      }
     }
   }
 
